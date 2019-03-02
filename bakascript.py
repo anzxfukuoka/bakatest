@@ -1,11 +1,15 @@
 import telebot
+import os
 import random as rand
+from flask import Flask, request
 import consoleweather.weather as cw
 import crypt as c
 
 token = "556161272:AAFoP3abycmprZXz3NpjfwRuZ6PVwelkLpw"
 
 bot = telebot.TeleBot(token)
+
+server = Flask(__name__)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -69,4 +73,20 @@ def echo_all(message):
     print(message)
     bot.reply_to(message, message.text)
 
-bot.polling()
+#bot.polling()
+
+@server.route('/' + token, methods=['POST'])
+def getMessage():
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+    return "!", 200
+
+
+@server.route("/")
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://bakatestapp.herokuapp.com/' + token)
+    return "!", 200
+
+
+if __name__ == "__main__":
+    server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
