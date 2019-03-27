@@ -1,5 +1,7 @@
+from PIL import Image
 import telebot
 import os
+import io
 import random as rand
 from flask import Flask, request
 import consoleweather.weather as cw
@@ -25,6 +27,7 @@ def send_welcome(message):
     /crypt - crypt
     /uncrypt - uncrypt
     /me - me
+    /daltonic - daltonic
     """)
 
 
@@ -64,16 +67,40 @@ def send_me(message):
         bot.delete_message(message.chat.id, message.message_id)
 
 
-@bot.message_handler(commands=['anon'])
-def send_anon(message):
-    bot.forward_message(-377257708, message.chat.id - 1, message.message_id)
+
+@bot.message_handler(commands=['daltonic'])
+def send_daltonic(message):
+    msg = bot.send_message(message.chat.id, "отправьте фото")
+    bot.register_next_step_handler(msg, daltonic)
+    pass
+
+def daltonic(message):
+    try:
+        fileID = message.photo[-1].file_id
+        file = bot.get_file(fileID)
+    except:
+        bot.send_message(message.chat.id, "это не фото")
+        return
+
+    downloaded_file = bot.download_file(file.file_path)
+
+    im = Image.open(io.BytesIO(downloaded_file))
+    r, g, b = im.split()
+    im = Image.merge("RGB", (r, r, b))
+
+    imgByteArr = io.BytesIO()
+    im.save(imgByteArr, format='PNG')
+    imgByteArr = imgByteArr.getvalue()
+
+    bot.send_photo(message.chat.id, imgByteArr)
+
+
+
 
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     print(message)
     bot.reply_to(message, message.text)
-
-#bot.polling()
 
 @server.route('/' + token, methods=['POST'])
 def getMessage():
@@ -89,4 +116,8 @@ def webhook():
 
 
 if __name__ == "__main__":
-    server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    #server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    pass
+
+bot.remove_webhook()
+bot.polling()
